@@ -2,7 +2,8 @@ import asyncio
 from logging import Logger
 from typing import Literal
 
-from configs.devices import Device, DevicesConfig
+from configs.devices.devices_config import DevicesConfig
+from configs.devices.devices_config_interfaces import Device
 from configs.telegram import TelegramConfig
 from core.tuya.client import TuyaAsyncClient
 from processes.telegram.bot import TelegramService
