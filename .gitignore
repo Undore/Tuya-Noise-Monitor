@@ -3,5 +3,5 @@
 .idea
 uv.lock
 *.pyc
-src/logs
-src/public
+logs
+public

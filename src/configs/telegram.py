@@ -3,3 +3,4 @@ class TelegramConfig:
 
     class notifications_recipients:
         ERRORS = [569223912, 1862087694]  # Telegram IDs
+        ALARMS = [569223912, 1862087694]

@@ -1,0 +1,9 @@
+# Blacklist all
+**
+
+# Whitelist
+!src/
+!src/**
+!pyproject.toml
+!uv.lock
+# .env processed through docker-compose.yml

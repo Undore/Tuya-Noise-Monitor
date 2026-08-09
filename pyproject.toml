@@ -1,6 +1,6 @@
 [project]
 name = "noise-level-controller"
-version = "0.1.0"
+version = "1.0"
 requires-python = ">=3.14"
 dependencies = [
     "aiogram>=3.30.0",
@@ -11,6 +11,7 @@ dependencies = [
     "click>=8.4.2",
     "pydantic-settings>=2.14.2",
     "python-dotenv>=1.2.2",
+    "pytz>=2026.3.post1",
     "redis>=8.1.0",
     "rich>=15.0.0",
     "tuya-connector-python>=0.1.2",
