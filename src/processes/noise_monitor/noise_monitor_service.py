@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from logging import Logger
 from typing import Literal
 
+from configs.app_settings import AppSettings, get_settings
 from configs.devices.devices_config import DevicesConfig
 from configs.devices.devices_config_interfaces import Device, AvgThreshold, StrikeThreshold, DeviceAlertConfig
 from configs.telegram import TelegramConfig
@@ -17,6 +18,7 @@ from shared.singleton_meta import Singleton
 
 class NoiseMonitorService(Singleton):
     logger: Logger = reg_logger("[bold magenta]{NOISE MONITOR}[/bold magenta]")
+    app_settings: AppSettings = get_settings()
 
     def __init__(self):
         self.telegram_service = TelegramService.get_instance()
@@ -40,7 +42,8 @@ class NoiseMonitorService(Singleton):
         while True:
             try:
                 measurements = await self.fetch_measurements()
-                self.logger.debug(f"Measurements: {measurements}")
+                if self.app_settings.verbose:
+                    self.logger.debug(f"Measurements: {measurements}")
                 current_hour = get_now().hour
 
                 for device, dB in measurements.values():

@@ -17,6 +17,8 @@ class AppSettings(BaseSettings):
     telegram_token: str
     telegram_proxy_string: Optional[str] = None
 
+    verbose: bool = False
+
 
 def get_settings() -> AppSettings:
     return AppSettings()  # type: ignore

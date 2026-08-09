@@ -15,6 +15,8 @@ settings: AppSettings = get_settings()
 
 async def main():
     logger.info("[bold cyan]Starting up")
+    if settings.verbose:
+        logger.debug("Verbose logging enabled")
 
     telegram = TelegramService.get_instance()
     await telegram.start_polling()

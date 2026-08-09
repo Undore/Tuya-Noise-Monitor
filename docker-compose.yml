@@ -7,4 +7,7 @@ services:
     env_file:
       - .env
 
+    environment:
+      verbose: "false"
+
     restart: unless-stopped
