@@ -1,7 +1,6 @@
 .env
 .venv
 .idea
-uv.lock
 *.pyc
 logs
 public
