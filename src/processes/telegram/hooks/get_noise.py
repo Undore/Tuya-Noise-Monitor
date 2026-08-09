@@ -17,9 +17,9 @@ async def get_noise(message: Message):
 
 
 class GetNoise:
-    noise_monitor_service = NoiseMonitorService.get_instance()
     def __init__(self):
         self.bot = TelegramService.get_instance().bot
+        self.noise_monitor_service = NoiseMonitorService.get_instance()
         self.logger: Logger = reg_logger("[yellow]{ROUTER: [bold]" + self.__class__.__qualname__ + "[/bold]}[/yellow]")
 
     async def __call__(self, message: Message):
