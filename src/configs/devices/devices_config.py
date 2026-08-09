@@ -2,6 +2,10 @@ from configs.devices.devices_config_interfaces import AvgThreshold, StrikeThresh
 
 
 class DevicesConfig:
+    """
+    WARNING: Max 20 devices supported
+    """
+
     devices = [
         Device(
             tuya_device_id="bf549fb518a81875f5dp7z",

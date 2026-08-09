@@ -17,7 +17,7 @@ class TuyaAsyncClient:
 
     app_settings: AppSettings = get_settings()
 
-    def __new__(cls):
+    def __new__(cls, *args, **kwargs):
         for l in ['tuya iot', 'urllib3']:
             logging.getLogger(l).setLevel(logging.CRITICAL)
 
@@ -45,26 +45,49 @@ class TuyaAsyncClient:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         self.executor.shutdown(cancel_futures=True, wait=False)
 
-    async def get_device_status(self, device_id: str) -> dict:
+    async def get_devices_status(self,device_ids: list[str]) -> dict[str, dict]:
         """
-        Abstract get device status. Returns a raw response or raises an error
-        :param device_id: Device ID from Tuya
-        :raises APIException: If response is not successful
-        :return: Dict response. Depends on device type
+        Get statuses of multiple Tuya devices.
+
+        Tuya allows up to 20 device IDs per request.
         """
-        self.logger.debug(f"[cyan]Fetching device status for device id {device_id} ")
-        endpoint = f"/v1.0/devices/{device_id}/status"
+        if not device_ids:
+            return {}
+
+        if len(device_ids) > 20:
+            raise ValueError("Tuya allows a maximum of 20 devices per request")
+
+        self.logger.debug(
+            f"[cyan]Fetching device statuses for {len(device_ids)} devices"
+        )
+
+        endpoint = "/v1.0/iot-03/devices/status"
+
         func = lambda: self.sdk_client.get(
             endpoint,
-            {}
+            {
+                "device_ids": ",".join(device_ids),
+            },
         )
-        future: dict = await self.loop.run_in_executor(self.executor, func)
-        if future['success'] is False:
-            self.logger.error(f"[bold red]Failed to fetch device status: [cyan]{future}")
-            raise APIException(
-                status=400,
-                message=f"Tuya responded with error: {future}"
+
+        response: dict = await self.loop.run_in_executor(
+            self.executor,
+            func,
+        )
+
+        if response["success"] is False:
+            self.logger.error(
+                f"[bold red]Failed to fetch device statuses: "
+                f"[cyan]{response}"
             )
 
-        self.logger.debug(f"[green]API Response for {endpoint}: {future}")
-        return future
+            raise APIException(
+                status=400,
+                message=f"Tuya responded with error: {response}",
+            )
+
+        self.logger.debug(
+            f"[green]API Response for {endpoint}: {response}"
+        )
+
+        return response

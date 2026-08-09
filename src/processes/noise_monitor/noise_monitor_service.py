@@ -7,6 +7,7 @@ from configs.app_settings import AppSettings, get_settings
 from configs.devices.devices_config import DevicesConfig
 from configs.devices.devices_config_interfaces import Device, AvgThreshold, StrikeThreshold, DeviceAlertConfig
 from configs.telegram import TelegramConfig
+from configs.tuya import TuyaConfig
 from core.tuya.client import TuyaAsyncClient
 from processes.telegram.bot import TelegramService
 from processes.telegram.services.notification import TelegramNotificationService
@@ -85,7 +86,7 @@ class NoiseMonitorService(Singleton):
             except Exception:
                 self.logger.exception("[bold red]NoiseMonitor Loop exception")
             finally:
-                await asyncio.sleep(5)
+                await asyncio.sleep(TuyaConfig.quotas.api_call_cooldown.total_seconds())
 
     async def send_alarm(self, device: Device, alert: DeviceAlertConfig, threshold_notice_text: str | None):
         self.logger.info(f"[bold cyan]Sending an alarm for device {device} on alert {alert.alert_name}")
@@ -99,39 +100,74 @@ class NoiseMonitorService(Singleton):
                  ( f"\n{threshold_notice_text}" if threshold_notice_text else "")
         )
 
-    async def fetch_measurements(self) -> dict[str, tuple[Device, float | int]]:
+    async def fetch_measurements(self,) -> dict[str, tuple[Device, float | int]]:
         """
-        Fetch measurements for all devices registered in DevicesConfig
+        Fetch measurements for all devices registered in DevicesConfig.
+
         :return: Dict[DeviceId, tuple[Device, dB_noise_level]]
         """
-        results = {}
+        results: dict[str, tuple[Device, float | int]] = {}
+        devices_ids = {device.tuya_device_id: device for device in DevicesConfig.devices}
 
-        async with TuyaAsyncClient() as client:
-            for device in DevicesConfig.devices:
-                try:
-                    response = await client.get_device_status(device.tuya_device_id)
-                except APIException as err:
-                    self.logger.error(f"[bold red]Tuya responded with API Error on device {device}: "
-                                      f"\n[blue]{err.__str__()}")
-                    self.logger.debug("[cyan]Reporting to admins")
-                    await self.notification_service.send_notifications(TelegramConfig.notifications_recipients.ERRORS,
-                                                                       text="<b>⚠️ Устройство не отвечает ⚠️</b>"
-                                                                            f"\nУстройство: <code>{device.__str__()}</code>"
-                                                                            f"\nКод ошибки: <code>{err.status}</code>")
+        if not devices_ids:
+            return {}
+
+        async with TuyaAsyncClient(verbose=self.app_settings.verbose) as client:
+            try:
+                response = await client.get_devices_status(devices_ids.keys())
+            except APIException as err:
+                self.logger.error(
+                    "[bold red]Tuya responded with API Error while fetching status: "
+                    f"\n[blue]{err}"
+                )
+
+                self.logger.debug("[cyan]Reporting to admins")
+
+                await self.notification_service.send_notifications(
+                    TelegramConfig.notifications_recipients.ERRORS,
+                    text=(
+                        "<b>⚠️ Не удалось получить статусы устройств ⚠️</b>"
+                        f"\nКод ошибки: <code>{err.status}</code>"
+                    ),
+                )
+
+                return {}
+
+        try:
+            for device_data in response["result"]:
+                device_id = device_data["id"]
+                device = devices_ids.get(device_id)
+
+                if device is None:
+                    self.logger.warning(
+                        f"[yellow]Tuya returned unknown device: {device_id}"
+                    )
                     continue
 
-                try:
-                    value_units: int = next(iter(i for i in response['result'] if i['code'] == 'co2_value'),
-                                            {})['value'] or 0
-                    results[device.tuya_device_id] = device, value_units / 10
-                except KeyError:
-                    self.logger.error(f"[bold red]Tuya responded with unexpected json:"
-                                      f"\n[blue]{response}")
-                    self.logger.debug("[cyan]Reporting to admins")
-                    await self.notification_service.send_notifications(TelegramConfig.notifications_recipients.ERRORS,
-                                                                       text="<b>Устройство не отвечает</b>"
-                                                                            f"\nНе удалось получить статус устройства <code>{device.__str__()}</code>"
-                                                                            f"\nКод ошибки: {err.status}")
-                    continue
+                value = next(iter(status["value"] for status in device_data["status"] if status["code"] == "co2_value"), 0)
+
+                assert isinstance(device, Device)
+                results[device_id] = (
+                    device,
+                    value / 10,
+                )
+
+        except (KeyError, TypeError):
+            self.logger.error(
+                "[bold red]Tuya responded with unexpected JSON:"
+                f"\n[blue]{response}"
+            )
+
+            self.logger.debug("[cyan]Reporting to admins")
+
+            await self.notification_service.send_notifications(
+                TelegramConfig.notifications_recipients.ERRORS,
+                text=(
+                    "<b>⚠️ Tuya вернула неожиданный ответ ⚠️</b>"
+                    f"\nОтвет: <code>{response}</code>"
+                ),
+            )
+
+            return {}
 
         return results
