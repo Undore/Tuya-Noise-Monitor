@@ -1,6 +1,8 @@
 .env
 .venv
 .idea
+src/configs/devices/devices_config.py
 *.pyc
 logs
 public
+src/configs/devices/devices_config.py
