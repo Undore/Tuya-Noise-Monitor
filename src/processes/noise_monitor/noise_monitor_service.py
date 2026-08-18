@@ -100,7 +100,7 @@ class NoiseMonitorService(Singleton):
                  ( f"\n{threshold_notice_text}" if threshold_notice_text else "")
         )
 
-    async def fetch_measurements(self,) -> dict[str, tuple[Device, float | int]]:
+    async def fetch_measurements(self) -> dict[str, tuple[Device, float | int]]:
         """
         Fetch measurements for all devices registered in DevicesConfig.
 
